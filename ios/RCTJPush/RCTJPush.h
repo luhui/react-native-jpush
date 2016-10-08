@@ -10,7 +10,7 @@
 #import "RCTBridgeModule.h"
 
 
-@interface RCTJPush : RCTEventEmitter<RCTBridgeModule>
+@interface RCTJPush : RCTEventEmitter
 
 + (void)setupWithOption:(NSDictionary *)launchingOption
                  appKey:(NSString *)appKey

@@ -10,6 +10,7 @@
 #import "JPUSHService.h"
 #import "RCTEventDispatcher.h"
 #import "RCTUtils.h"
+#import <UserNotifications/UserNotifications.h>
 
 NSString *const kJPFNetworkDidReceiveApnsMessageNotification = @"kJPFNetworkDidReceiveApnsMessageNotification";
 NSString *const kJPFNetworkDidOpenApnsMessageNotification = @"kJPFNetworkDidOpenApnsMessageNotification";
@@ -19,6 +20,18 @@ NSString *const kJPFNetworkDidOpenApnsMessageNotification = @"kJPFNetworkDidOpen
 @synthesize bridge = _bridge;
 
 RCT_EXPORT_MODULE();
+
+- (NSArray<NSString *> *)supportedEvents {
+    static dispatch_once_t onceToken;
+    static NSArray *events;
+    dispatch_once(&onceToken, ^{
+        events = @[
+                   @"kJPFNetworkDidReceiveCustomMessageNotification",
+                   @"kJPFNetworkDidReceiveMessageNotification",
+                   @"kJPFNetworkDidOpenMessageNotification"];
+    });
+    return events;
+}
 
 - (dispatch_queue_t)methodQueue
 {
@@ -91,41 +104,64 @@ RCT_EXPORT_MODULE();
 
 + (void)_requestPermissions:(NSDictionary *)permissions
 {
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_8_0
-    UIRemoteNotificationType types = UIRemoteNotificationTypeNone;
-    if (permissions) {
-        if ([permissions[@"alert"] boolValue]) {
-            types |= UIRemoteNotificationTypeAlert;
+    //Required
+    if ([[UIDevice currentDevice].systemVersion floatValue] >= 10.0) {
+        NSUInteger types = UNAuthorizationOptionNone;
+        if (permissions) {
+            if ([permissions[@"alert"] boolValue]) {
+                types |= UNAuthorizationOptionAlert;
+            }
+            if ([permissions[@"badge"] boolValue]) {
+                types |= UNAuthorizationOptionBadge;
+            }
+            if ([permissions[@"sound"] boolValue]) {
+                types |= UNAuthorizationOptionSound;
+            }
+        } else {
+            types = UNAuthorizationOptionAlert | UNAuthorizationOptionAlert | UNAuthorizationOptionAlert;
         }
-        if ([permissions[@"badge"] boolValue]) {
-            types |= UIRemoteNotificationTypeBadge;
-        }
-        if ([permissions[@"sound"] boolValue]) {
-            types |= UIRemoteNotificationTypeSound;
-        }
-    } else {
-        types = UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound;
+        JPUSHRegisterEntity * entity = [[JPUSHRegisterEntity alloc] init];
+        entity.types = types;
+        [JPUSHService registerForRemoteNotificationConfig:entity delegate:nil];
     }
-    [JPUSHService registerForRemoteNotificationTypes:types categories:nil];
-    
-#else
-    UIUserNotificationType types = UIUserNotificationTypeNone;
-    if (permissions) {
-        if ([permissions[@"alert"] boolValue]) {
-            types |= UIUserNotificationTypeAlert;
+    else if ([[UIDevice currentDevice].systemVersion floatValue] >= 8.0) {
+        NSUInteger types = UIUserNotificationTypeNone;
+        if (permissions) {
+            if ([permissions[@"alert"] boolValue]) {
+                types |= UIUserNotificationTypeAlert;
+            }
+            if ([permissions[@"badge"] boolValue]) {
+                types |= UIUserNotificationTypeBadge;
+            }
+            if ([permissions[@"sound"] boolValue]) {
+                types |= UIUserNotificationTypeSound;
+            }
+        } else {
+            types = UIUserNotificationTypeAlert | UIUserNotificationTypeBadge | UIUserNotificationTypeSound;
         }
-        if ([permissions[@"badge"] boolValue]) {
-            types |= UIUserNotificationTypeBadge;
-        }
-        if ([permissions[@"sound"] boolValue]) {
-            types |= UIUserNotificationTypeSound;
-        }
-    } else {
-        types = UIUserNotificationTypeAlert | UIUserNotificationTypeBadge | UIUserNotificationTypeSound;
+        //可以添加自定义categories
+        [JPUSHService registerForRemoteNotificationTypes:types
+                                              categories:nil];
     }
-    
-    [JPUSHService registerForRemoteNotificationTypes:types categories:nil];
-#endif
+    else {
+        NSUInteger types = UIRemoteNotificationTypeNone;
+        if (permissions) {
+            if ([permissions[@"alert"] boolValue]) {
+                types |= UIRemoteNotificationTypeAlert;
+            }
+            if ([permissions[@"badge"] boolValue]) {
+                types |= UIRemoteNotificationTypeBadge;
+            }
+            if ([permissions[@"sound"] boolValue]) {
+                types |= UIRemoteNotificationTypeSound;
+            }
+        } else {
+            types = UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound;
+        }
+        //categories 必须为nil
+        [JPUSHService registerForRemoteNotificationTypes:types
+                                              categories:nil];
+    }
 }
 
 - (void)handleNetworkDidReceiveMessageNotification:(NSNotification *)notification
