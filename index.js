@@ -1,7 +1,7 @@
 /**
  * Created by lvbingru on 10/23/15.
  */
-import {NativeModules, DeviceEventEmitter} from 'react-native';
+import {NativeModules, DeviceEventEmitter, NativeEventEmitter} from 'react-native';
 
 const nativeModule = NativeModules.JPush;
 const invariant = require('invariant');
@@ -9,10 +9,12 @@ const invariant = require('invariant');
 const _notifHandlers = [];
 let _initialNotification = nativeModule &&
     nativeModule.initialNotification;
+const eventEmitter = new NativeEventEmitter(nativeModule)
 
 export const JpushEventReceiveMessage = 'kJPFNetworkDidReceiveMessageNotification'
 export const JpushEventOpenMessage = 'kJPFNetworkDidOpenMessageNotification'
 export const JpushEventReceiveCustomMessage = 'kJPFNetworkDidReceiveCustomMessageNotification'
+export const JpushRegisterDeviceTokenState = 'kJPFRegisterDeviceTokenState'
 
 export default class JPushNotification {
 
@@ -63,10 +65,10 @@ export default class JPushNotification {
         if (type === JpushEventOpenMessage && _initialNotification) {
             handler(this.popInitialNotification())
         }
-        const listener = DeviceEventEmitter.addListener(
+        const listener = eventEmitter.addListener(
             type,
             (note) => {
-                handler(note && new JPushNotification(note));
+                handler(note !== undefined && note !== null && new JPushNotification(note));
             }
         );
         _notifHandlers.push(listener)
@@ -158,13 +160,15 @@ export default class JPushNotification {
     static setSilenceTime(startHour, startMinute, endHour, endMinute) {
         nativeModule.setSilenceTime && nativeModule.setSilenceTime(startHour, startMinute, endHour, endMinute)
     }
+
+    static getRegisterDeviceTokenState() {
+        nativeModule.getRegisterDeviceTokenState && nativeModule.getRegisterDeviceTokenState()
+    }
 }
 
 function checkListenerType(type) {
     invariant(
-        type === JpushEventReceiveMessage || type === JpushEventOpenMessage || type === JpushEventReceiveCustomMessage,
-        'JPushNotification only supports `JpushEventReceiveMessage` ,`JpushEventOpenMessage`, `JpushEventReceiveCustomMessage`, events'
+        type === JpushEventReceiveMessage || type === JpushEventOpenMessage || type === JpushEventReceiveCustomMessage || type === JpushRegisterDeviceTokenState,
+        'JPushNotification only supports `JpushEventReceiveMessage` ,`JpushEventOpenMessage`, `JpushEventReceiveCustomMessage`, `JpushRegisterDeviceTokenState`, events'
     );
 }
-
-

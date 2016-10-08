@@ -14,10 +14,15 @@
 
 NSString *const kJPFNetworkDidReceiveApnsMessageNotification = @"kJPFNetworkDidReceiveApnsMessageNotification";
 NSString *const kJPFNetworkDidOpenApnsMessageNotification = @"kJPFNetworkDidOpenApnsMessageNotification";
+NSString *const kJPFRegisterDeviceTokenState = @"kJPFRegisterDeviceTokenState";
 
-@implementation RCTJPush
+@interface RCTJPush ()<JPUSHRegisterDelegate>
 
-@synthesize bridge = _bridge;
+@end
+
+@implementation RCTJPush {
+    NSData *_deviceToken;
+}
 
 RCT_EXPORT_MODULE();
 
@@ -28,7 +33,8 @@ RCT_EXPORT_MODULE();
         events = @[
                    @"kJPFNetworkDidReceiveCustomMessageNotification",
                    @"kJPFNetworkDidReceiveMessageNotification",
-                   @"kJPFNetworkDidOpenMessageNotification"];
+                   @"kJPFNetworkDidOpenMessageNotification",
+                   @"kJPFRegisterDeviceTokenState"];
     });
     return events;
 }
@@ -52,6 +58,7 @@ RCT_EXPORT_MODULE();
                                                  selector:@selector(handleNetworkDidOpenAPNSMessageNotification:)
                                                      name:kJPFNetworkDidOpenApnsMessageNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleAppEnterForeground:) name:UIApplicationWillEnterForegroundNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleRegisterDeviceTokenState:) name:kJPFRegisterDeviceTokenState object:nil];
         
         [self resetBadge];
     }
@@ -65,7 +72,7 @@ RCT_EXPORT_MODULE();
 
 - (NSDictionary<NSString *, id> *)constantsToExport
 {
-    NSDictionary<NSString *, id> *initialNotification = [_bridge.launchOptions[UIApplicationLaunchOptionsRemoteNotificationKey] copy];
+    NSDictionary<NSString *, id> *initialNotification = [self.bridge.launchOptions[UIApplicationLaunchOptionsRemoteNotificationKey] copy];
     return @{@"initialNotification": RCTNullIfNil(initialNotification)};
 }
 
@@ -87,6 +94,7 @@ RCT_EXPORT_MODULE();
 
 + (void)application:(__unused UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken
 {
+    [[NSNotificationCenter defaultCenter] postNotificationName:kJPFRegisterDeviceTokenState object:nil userInfo:@{@"deviceToken": deviceToken}];
     [JPUSHService registerDeviceToken:deviceToken];
 }
 
@@ -122,7 +130,7 @@ RCT_EXPORT_MODULE();
         }
         JPUSHRegisterEntity * entity = [[JPUSHRegisterEntity alloc] init];
         entity.types = types;
-        [JPUSHService registerForRemoteNotificationConfig:entity delegate:nil];
+        [JPUSHService registerForRemoteNotificationConfig:entity delegate:self];
     }
     else if ([[UIDevice currentDevice].systemVersion floatValue] >= 8.0) {
         NSUInteger types = UIUserNotificationTypeNone;
@@ -140,8 +148,9 @@ RCT_EXPORT_MODULE();
             types = UIUserNotificationTypeAlert | UIUserNotificationTypeBadge | UIUserNotificationTypeSound;
         }
         //可以添加自定义categories
-        [JPUSHService registerForRemoteNotificationTypes:types
-                                              categories:nil];
+        JPUSHRegisterEntity * entity = [[JPUSHRegisterEntity alloc] init];
+        entity.types = types;
+        [JPUSHService registerForRemoteNotificationConfig:entity delegate:self];
     }
     else {
         NSUInteger types = UIRemoteNotificationTypeNone;
@@ -159,29 +168,61 @@ RCT_EXPORT_MODULE();
             types = UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound;
         }
         //categories 必须为nil
-        [JPUSHService registerForRemoteNotificationTypes:types
-                                              categories:nil];
+        JPUSHRegisterEntity * entity = [[JPUSHRegisterEntity alloc] init];
+        entity.types = types;
+        [JPUSHService registerForRemoteNotificationConfig:entity delegate:self];
     }
 }
 
 - (void)handleNetworkDidReceiveMessageNotification:(NSNotification *)notification
 {
+    NSLog(@"handle custom message:%@", notification);
     [self sendEventWithName:@"kJPFNetworkDidReceiveCustomMessageNotification" body:notification.userInfo];
 }
 
 - (void)handleNetworkDidReceiveAPNSMessageNotification:(NSNotification *)notification
 {
+    NSLog(@"handle ancs message:%@", notification);
     [self sendEventWithName:@"kJPFNetworkDidReceiveMessageNotification" body:notification.userInfo];
 }
 - (void)handleNetworkDidOpenAPNSMessageNotification:(NSNotification *)notification
 {
+    NSLog(@"handle open message:%@", notification);
     [self sendEventWithName:@"kJPFNetworkDidOpenMessageNotification" body:notification.userInfo];
+}
+- (void)handleRegisterDeviceTokenState:(NSNotification *)notification {
+    _deviceToken = notification.userInfo[@"deviceToken"];
+    [self getRegisterDeviceTokenState];
 }
 
 - (void)handleAppEnterForeground:(NSNotification *)notification
 {
     [self resetBadge];
 }
+
+#pragma mark- JPUSHRegisterDelegate
+
+// iOS 10 Support
++ (void)jpushNotificationCenter:(UNUserNotificationCenter *)center willPresentNotification:(UNNotification *)notification withCompletionHandler:(void (^)(NSInteger))completionHandler {
+    // Required
+    NSDictionary * userInfo = notification.request.content.userInfo;
+    if([notification.request.trigger isKindOfClass:[UNPushNotificationTrigger class]]) {
+        [self application:[UIApplication sharedApplication] didReceiveRemoteNotification:userInfo];
+    }
+    completionHandler(UNNotificationPresentationOptionAlert); // 需要执行这个方法，选择是否提醒用户，有Badge、Sound、Alert三种类型可以选择设置
+}
+
+// iOS 10 Support
++ (void)jpushNotificationCenter:(UNUserNotificationCenter *)center didReceiveNotificationResponse:(UNNotificationResponse *)response withCompletionHandler:(void (^)())completionHandler {
+    // Required
+    NSDictionary * userInfo = response.notification.request.content.userInfo;
+    if([response.notification.request.trigger isKindOfClass:[UNPushNotificationTrigger class]]) {
+        [self application:[UIApplication sharedApplication] didReceiveRemoteNotification:userInfo];
+    }
+    completionHandler();  // 系统要求执行这个方法
+}
+
+#pragma mark - JS Method
 
 RCT_EXPORT_METHOD(setAlias:(NSString *)alias)
 {
@@ -291,6 +332,11 @@ RCT_EXPORT_METHOD(requestPermissions:(NSDictionary *)permissions)
 RCT_EXPORT_METHOD(abandonPermissions)
 {
     [RCTSharedApplication() unregisterForRemoteNotifications];
+}
+
+RCT_EXPORT_METHOD(getRegisterDeviceTokenState)
+{
+    [self sendEventWithName:kJPFRegisterDeviceTokenState body:@{@"state": @(_deviceToken != nil)}];
 }
 
 @end
