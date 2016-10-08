@@ -7,30 +7,31 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		9138FE101C44CE160016C03F /* libPushSDK-1.8.8.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9138FE0F1C44CE160016C03F /* libPushSDK-1.8.8.a */; };
-		919F83301C44AB9D00D40C24 /* RCTJPush.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 919F832F1C44AB9D00D40C24 /* RCTJPush.h */; };
+		919F83301C44AB9D00D40C24 /* RCTJPush.h in Copy Files */ = {isa = PBXBuildFile; fileRef = 919F832F1C44AB9D00D40C24 /* RCTJPush.h */; };
 		919F83321C44AB9D00D40C24 /* RCTJPush.m in Sources */ = {isa = PBXBuildFile; fileRef = 919F83311C44AB9D00D40C24 /* RCTJPush.m */; };
+		EF21483B1DA88F8F003FDF68 /* jpush-ios-2.1.9.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EF2148391DA88F8F003FDF68 /* jpush-ios-2.1.9.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		919F832A1C44AB9D00D40C24 /* CopyFiles */ = {
+		919F832A1C44AB9D00D40C24 /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "include/$(PRODUCT_NAME)";
 			dstSubfolderSpec = 16;
 			files = (
-				919F83301C44AB9D00D40C24 /* RCTJPush.h in CopyFiles */,
+				919F83301C44AB9D00D40C24 /* RCTJPush.h in Copy Files */,
 			);
+			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		9138FE0E1C44CE160016C03F /* APService.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APService.h; sourceTree = "<group>"; };
-		9138FE0F1C44CE160016C03F /* libPushSDK-1.8.8.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "libPushSDK-1.8.8.a"; sourceTree = "<group>"; };
 		919F832C1C44AB9D00D40C24 /* libRCTJPush.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRCTJPush.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		919F832F1C44AB9D00D40C24 /* RCTJPush.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RCTJPush.h; sourceTree = "<group>"; };
 		919F83311C44AB9D00D40C24 /* RCTJPush.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RCTJPush.m; sourceTree = "<group>"; };
+		EF2148391DA88F8F003FDF68 /* jpush-ios-2.1.9.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "jpush-ios-2.1.9.a"; sourceTree = "<group>"; };
+		EF21483A1DA88F8F003FDF68 /* JPUSHService.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JPUSHService.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,7 +39,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9138FE101C44CE160016C03F /* libPushSDK-1.8.8.a in Frameworks */,
+				EF21483B1DA88F8F003FDF68 /* jpush-ios-2.1.9.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -48,8 +49,8 @@
 		9138FE0D1C44CE160016C03F /* JPushSDK */ = {
 			isa = PBXGroup;
 			children = (
-				9138FE0E1C44CE160016C03F /* APService.h */,
-				9138FE0F1C44CE160016C03F /* libPushSDK-1.8.8.a */,
+				EF2148391DA88F8F003FDF68 /* jpush-ios-2.1.9.a */,
+				EF21483A1DA88F8F003FDF68 /* JPUSHService.h */,
 			);
 			path = JPushSDK;
 			sourceTree = "<group>";
@@ -89,7 +90,7 @@
 			buildPhases = (
 				919F83281C44AB9D00D40C24 /* Sources */,
 				919F83291C44AB9D00D40C24 /* Frameworks */,
-				919F832A1C44AB9D00D40C24 /* CopyFiles */,
+				919F832A1C44AB9D00D40C24 /* Copy Files */,
 			);
 			buildRules = (
 			);
@@ -179,7 +180,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -216,7 +217,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;

@@ -7,7 +7,7 @@
 //
 
 #import "RCTJPush.h"
-#import "APService.h"
+#import "JPUSHService.h"
 #import "RCTEventDispatcher.h"
 #import "RCTUtils.h"
 
@@ -56,26 +56,30 @@ RCT_EXPORT_MODULE();
     return @{@"initialNotification": RCTNullIfNil(initialNotification)};
 }
 
-+ (void)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
++ (void)setupWithOption:(NSDictionary *)launchingOption
+                 appKey:(NSString *)appKey
+                channel:(NSString *)channel
+       apsForProduction:(BOOL)isProduction
+  advertisingIdentifier:(NSString *)advertisingId
 {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        [APService setupWithOption:launchOptions];
+        [JPUSHService setupWithOption:launchingOption appKey:appKey channel:channel apsForProduction:isProduction advertisingIdentifier:advertisingId];
     });
     
 #ifdef DEBUG
-    [APService setDebugMode];
+    [JPUSHService setDebugMode];
 #endif
 }
 
 + (void)application:(__unused UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken
 {
-    [APService registerDeviceToken:deviceToken];
+    [JPUSHService registerDeviceToken:deviceToken];
 }
 
 + (void)application:(__unused UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)notification
 {
-    [APService handleRemoteNotification:notification];
+    [JPUSHService handleRemoteNotification:notification];
     
     if (application.applicationState == UIApplicationStateInactive) {
         [[NSNotificationCenter defaultCenter] postNotificationName:kJPFNetworkDidOpenApnsMessageNotification object:nil userInfo:notification];
@@ -102,7 +106,7 @@ RCT_EXPORT_MODULE();
     } else {
         types = UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound;
     }
-    [APService registerForRemoteNotificationTypes:types categories:nil];
+    [JPUSHService registerForRemoteNotificationTypes:types categories:nil];
     
 #else
     UIUserNotificationType types = UIUserNotificationTypeNone;
@@ -120,25 +124,22 @@ RCT_EXPORT_MODULE();
         types = UIUserNotificationTypeAlert | UIUserNotificationTypeBadge | UIUserNotificationTypeSound;
     }
     
-    [APService registerForRemoteNotificationTypes:types categories:nil];
+    [JPUSHService registerForRemoteNotificationTypes:types categories:nil];
 #endif
 }
 
 - (void)handleNetworkDidReceiveMessageNotification:(NSNotification *)notification
 {
-    [_bridge.eventDispatcher sendDeviceEventWithName:@"kJPFNetworkDidReceiveCustomMessageNotification"
-                                                body:notification.userInfo];
+    [self sendEventWithName:@"kJPFNetworkDidReceiveCustomMessageNotification" body:notification.userInfo];
 }
 
 - (void)handleNetworkDidReceiveAPNSMessageNotification:(NSNotification *)notification
 {
-    [_bridge.eventDispatcher sendDeviceEventWithName:@"kJPFNetworkDidReceiveMessageNotification"
-                                                body:notification.userInfo];
+    [self sendEventWithName:@"kJPFNetworkDidReceiveMessageNotification" body:notification.userInfo];
 }
 - (void)handleNetworkDidOpenAPNSMessageNotification:(NSNotification *)notification
 {
-    [_bridge.eventDispatcher sendDeviceEventWithName:@"kJPFNetworkDidOpenMessageNotification"
-                                                body:notification.userInfo];
+    [self sendEventWithName:@"kJPFNetworkDidOpenMessageNotification" body:notification.userInfo];
 }
 
 - (void)handleAppEnterForeground:(NSNotification *)notification
@@ -148,52 +149,56 @@ RCT_EXPORT_MODULE();
 
 RCT_EXPORT_METHOD(setAlias:(NSString *)alias)
 {
-    [APService setAlias:alias callbackSelector:NULL object:nil];
+    [JPUSHService setAlias:alias callbackSelector:NULL object:nil];
 }
 
 RCT_EXPORT_METHOD(setTags:(NSArray *)tags alias:(NSString *)alias)
 {
-    [APService setTags:[NSSet setWithArray:tags] alias:alias callbackSelector:NULL object:nil];
+    [JPUSHService setTags:[NSSet setWithArray:tags] alias:alias callbackSelector:NULL object:nil];
 }
 
 RCT_EXPORT_METHOD(cancelAllLocalNotifications)
 {
-    [APService clearAllLocalNotifications];
+    [JPUSHService removeNotification:nil];
 }
 
-RCT_EXPORT_METHOD(setLocalNotification:(NSDictionary *)notification)
+RCT_EXPORT_METHOD(setLocalNotification:(NSDictionary *)notification callback:(RCTResponseSenderBlock) callback)
 {
-    double date = [notification[@"date"] doubleValue];
-    NSString *alertBody = notification[@"alertBody"];
-    int badge = [notification[@"badge"] intValue];
-    NSString *alertAction = notification[@"alertAction"];
-    NSString *identifierKey = notification[@"identifierKey"];
-    NSDictionary *userInfo = notification[@"userInfo"];
-    NSString *soundName = notification[@"identifierKey"];
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_8_0
-    [APService setLocalNotification:[NSDate dateWithTimeIntervalSince1970:date] alertBody:alertBody badge:badge alertAction:alertAction identifierKey:identifierKey userInfo:userInfo soundName:soundName];
-#else
-    CLRegion *region = nil;
-    BOOL regionTriggersOnce = [notification[@"regionTriggersOnce"] boolValue];
-    NSString *category = notification[@"category"];
-    
-    [APService setLocalNotification:[NSDate dateWithTimeIntervalSince1970:date] alertBody:alertBody badge:badge alertAction:alertAction identifierKey:identifierKey userInfo:userInfo soundName:soundName region:region regionTriggersOnce:regionTriggersOnce category:category];
-#endif
-
+    JPushNotificationRequest *request = [[JPushNotificationRequest alloc] init];
+    JPushNotificationContent *content = [[JPushNotificationContent alloc] init];
+    JPushNotificationTrigger *trigger = [[JPushNotificationTrigger alloc] init];
+    request.content = content;
+    request.trigger = trigger;
+    void(^setKeyValues)(id, NSDictionary *) = ^(id object, NSDictionary *data) {
+        for (NSString *key in data.allKeys) {
+            id value = data[key];
+            if ([value isKindOfClass:[NSDictionary class]]) {
+                if ([object respondsToSelector:@selector(key)]) {
+                    setKeyValues([object valueForKey:key], value);
+                }
+            } else {
+                if ([object respondsToSelector:@selector(key)]) {
+                    [object setValue:value forKey:key];
+                }
+            }
+        }
+    };
+    setKeyValues(request, notification);
+    request.completionHandler = callback;
+    [JPUSHService addNotification:request];
 }
 
 RCT_EXPORT_METHOD(resetBadge)
 {
     RCTSharedApplication().applicationIconBadgeNumber = 1;
     RCTSharedApplication().applicationIconBadgeNumber = 0;
-    [APService resetBadge];
+    [JPUSHService resetBadge];
 }
 
 RCT_EXPORT_METHOD(setBadge:(int)badge)
 {
     RCTSharedApplication().applicationIconBadgeNumber = badge;
-    [APService setBadge:badge];
+    [JPUSHService setBadge:badge];
 }
 
 RCT_EXPORT_METHOD(getBadge:(RCTResponseSenderBlock)callback)
@@ -203,39 +208,39 @@ RCT_EXPORT_METHOD(getBadge:(RCTResponseSenderBlock)callback)
 
 RCT_EXPORT_METHOD(getRegistrationID:(RCTResponseSenderBlock)callback)
 {
-    NSString *registrationID = [APService registrationID];
+    NSString *registrationID = [JPUSHService registrationID];
     callback(@[RCTNullIfNil(registrationID)]);
 }
 
 RCT_EXPORT_METHOD(setLogOFF)
 {
-    [APService setLogOFF];
+    [JPUSHService setLogOFF];
 }
 
 RCT_EXPORT_METHOD(crashLogON)
 {
-    [APService crashLogON];
+    [JPUSHService crashLogON];
 }
 
 RCT_EXPORT_METHOD(setLocation:(double)latitude
                   :(double)longitude)
 {
-    [APService setLatitude:latitude longitude:longitude];
+    [JPUSHService setLatitude:latitude longitude:longitude];
 }
 
 RCT_EXPORT_METHOD(startLogPageView:(NSString *)logPageView)
 {
-    [APService startLogPageView:logPageView];
+    [JPUSHService startLogPageView:logPageView];
 }
 
 RCT_EXPORT_METHOD(stopLogPageView:(NSString *)logPageView)
 {
-    [APService stopLogPageView:logPageView];
+    [JPUSHService stopLogPageView:logPageView];
 }
 
 RCT_EXPORT_METHOD(beginLogPageView:(NSString *)logPageView duration:(int)duration)
 {
-    [APService beginLogPageView:logPageView duration:duration];
+    [JPUSHService beginLogPageView:logPageView duration:duration];
 }
 
 RCT_EXPORT_METHOD(requestPermissions:(NSDictionary *)permissions)
