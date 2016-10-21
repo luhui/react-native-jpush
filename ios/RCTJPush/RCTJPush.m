@@ -126,7 +126,7 @@ RCT_EXPORT_MODULE();
                 types |= UNAuthorizationOptionSound;
             }
         } else {
-            types = UNAuthorizationOptionAlert | UNAuthorizationOptionAlert | UNAuthorizationOptionAlert;
+            types = UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge;
         }
         JPUSHRegisterEntity * entity = [[JPUSHRegisterEntity alloc] init];
         entity.types = types;
@@ -182,7 +182,7 @@ RCT_EXPORT_MODULE();
 
 - (void)handleNetworkDidReceiveAPNSMessageNotification:(NSNotification *)notification
 {
-    NSLog(@"handle ancs message:%@", notification);
+    NSLog(@"handle apncs message:%@", notification);
     [self sendEventWithName:@"kJPFNetworkDidReceiveMessageNotification" body:notification.userInfo];
 }
 - (void)handleNetworkDidOpenAPNSMessageNotification:(NSNotification *)notification
