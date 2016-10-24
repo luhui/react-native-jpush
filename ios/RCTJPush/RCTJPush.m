@@ -209,7 +209,7 @@ RCT_EXPORT_MODULE();
     if([notification.request.trigger isKindOfClass:[UNPushNotificationTrigger class]]) {
         [self application:[UIApplication sharedApplication] didReceiveRemoteNotification:userInfo];
     }
-    completionHandler(UNNotificationPresentationOptionAlert); // 需要执行这个方法，选择是否提醒用户，有Badge、Sound、Alert三种类型可以选择设置
+    completionHandler(UNNotificationPresentationOptionAlert | UNNotificationPresentationOptionBadge | UNNotificationPresentationOptionSound); // 需要执行这个方法，选择是否提醒用户，有Badge、Sound、Alert三种类型可以选择设置
 }
 
 // iOS 10 Support
