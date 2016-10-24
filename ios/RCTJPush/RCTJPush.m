@@ -244,24 +244,22 @@ RCT_EXPORT_METHOD(setLocalNotification:(NSDictionary *)notification callback:(RC
     JPushNotificationRequest *request = [[JPushNotificationRequest alloc] init];
     JPushNotificationContent *content = [[JPushNotificationContent alloc] init];
     JPushNotificationTrigger *trigger = [[JPushNotificationTrigger alloc] init];
+    NSDictionary *contentDic = notification[@"content"];
+    if (contentDic) {
+        [content setValuesForKeysWithDictionary:contentDic];
+    }
+    NSDictionary *triggerDic = notification[@"trigger"];
+    if (triggerDic) {
+        [trigger setValuesForKeysWithDictionary:triggerDic];
+    }
+    [request setValuesForKeysWithDictionary:notification];
     request.content = content;
     request.trigger = trigger;
-    void(^setKeyValues)(id, NSDictionary *) = ^(id object, NSDictionary *data) {
-        for (NSString *key in data.allKeys) {
-            id value = data[key];
-            if ([value isKindOfClass:[NSDictionary class]]) {
-                if ([object respondsToSelector:@selector(key)]) {
-                    setKeyValues([object valueForKey:key], value);
-                }
-            } else {
-                if ([object respondsToSelector:@selector(key)]) {
-                    [object setValue:value forKey:key];
-                }
-            }
+    request.completionHandler = ^(id result) {
+        if (callback) {
+            callback(@[notification]);
         }
     };
-    setKeyValues(request, notification);
-    request.completionHandler = callback;
     [JPUSHService addNotification:request];
 }
 
